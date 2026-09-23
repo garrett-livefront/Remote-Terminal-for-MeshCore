@@ -1,0 +1,44 @@
+name: Fork image
+
+on:
+  push:
+    branches: [fork-ci]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit to build
+        default: feat/companion-repeat-toggle
+      tag:
+        description: Image tag
+        default: companion-repeat-toggle
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || 'feat/companion-repeat-toggle' }}
+
+      - id: meta
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: COMMIT_HASH=${{ steps.meta.outputs.sha }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/remoteterm-meshcore:${{ inputs.tag || 'companion-repeat-toggle' }}
+            ghcr.io/${{ github.repository_owner }}/remoteterm-meshcore:${{ steps.meta.outputs.sha }}
